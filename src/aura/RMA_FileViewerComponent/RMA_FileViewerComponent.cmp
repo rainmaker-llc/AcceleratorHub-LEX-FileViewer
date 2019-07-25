@@ -1,0 +1,264 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName,forceCommunity:availableForAllPageTypes,forceCommunity:layout" access="global" 
+                controller="RMA_FileViewerController">
+    <!--"Folder"-->
+    <!--    Description="Folder where from document list need to show"-->
+    <aura:attribute name="Folder" type="string" default="" required="false" access="global"/>
+    
+    <!--"Library"-->
+    <!--    Description="Library where from document list need to show"-->
+    <aura:attribute name="Library" type="string" default="" required="false" access="global"/>
+    
+    <!--"List Label(optional)"-->
+    <!--    Description="Name for your list view. If blank, default is plural of the Object"-->
+    <aura:attribute name="listLabel" type="string" default="Documents" required="false" access="global"/>
+    
+    <!--"Fields to Show"-->
+    <!--    Description="Comma-separated list of API names of the fields you want to show up on the related list.  Field1, Field2, Field3__c ...  They'll show up in the order given, with the first field being a link to the record detail page"-->
+    <aura:attribute name="displayFields" type="string" required="true" default="Name" access="global"/>
+    
+    <!--"File Type"-->
+    <!--    Description="File Type -Please Provide Files Type seprated by Comma(,)" -->
+    <aura:attribute name="fileType" type="string" default="MP4,MOV,AVI,WMV,M4V,MPEG,MPG" access="global"/>
+    
+    <!--"Order By"-->
+    <!--    Description="What field api name do you want the list to default sort by?"-->
+    <aura:attribute name="orderBy" type="string" default="LastModifiedDate" access="global"/>
+    
+    <!--"Sort Order"-->
+    <!--    Description="Order By - Sort the default results Ascending or Descending?" datasource="ASC,DESC"-->
+    <aura:attribute name="sortOrder" type="string" default="DESC" access="global"/>
+    
+    <!--"Display As"-->
+    <!--    Description="Display As - Show the default results Table or global?" datasource="Table,Grid"-->
+    <aura:attribute name="displayAs" type="string" default="Table" access="global"/>
+    
+    <!--"Limit"-->
+    <!--    Description="Maximum amount of records to initially show in the list."-->
+    <aura:attribute name="limit" type="integer" required="false" default = "5" access="global"/>
+    
+    <!--declare events handlers--> 
+    <aura:handler name="init" value="{!this}" action="{!c.init}" />
+    
+    <!-- Internal Attributes -->
+    <aura:attribute name="gridColumns" type="List" access="PRIVATE" />
+    <aura:attribute name="gridData" type="Object" />
+    <aura:attribute name="gridExpandedRows" type="List" />
+    <aura:attribute name="gridItems" type="List" />
+    <aura:attribute name="isLoading" type="Boolean" default="false" />
+    <aura:attribute name="isRootFolder" type="Boolean" default="true" />
+    <aura:attribute name="breadcrumbCollection" type="Object"/>
+    <aura:attribute name="contentDocumentId" type="String"/>
+    <aura:attribute name="documentId" type="String"/>
+    <aura:attribute name="entityVal" type="List"/>
+    
+    <meta http-equiv="Content-Security-Policy" content="connect-src 'self' file: data: blob: filesystem:; default-src *; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'"/>
+    <aura:if isTrue="{! equals(v.displayAs, 'Table')}">
+        <lightning:card title="{! v.listLabel}" iconName="" footer="">
+            
+            <!-- TreeGrid for Table View -->
+            <lightning:treeGrid aura:id="treegrid_async" columns="{! v.gridColumns }" data="{! v.gridData }"
+                                expandedRows="{! v.gridExpandedRows }" keyField="Title" isLoading="{! v.isLoading }"
+                                ontoggle="{! c.handleRowToggle }" onrowaction="{! c.handleRowAction }" />
+        </lightning:card>
+        <aura:set attribute="else">
+            <lightning:card title="" iconName="" footer="">
+                
+                <!-- Breadcrumbs for Navigation -->
+                <lightning:breadcrumbs class='margin'>
+                    <aura:iteration items="{! v.breadcrumbCollection }" var="breadcrumb">
+                        <lightning:breadcrumb label="{! breadcrumb.label }" onclick="{! c.navigateTo }" name="{! breadcrumb.name }"/>
+                    </aura:iteration>
+                </lightning:breadcrumbs>
+                
+                <!-- FileCard for Grid View -->
+                <div class="autoHeight slds-theme_default forceChatterObjectHomeTileView">
+                    <section>
+                        <aura:iteration items="{!v.gridItems}" var="gridItem">
+                            <aura:if isTrue="{!gridItem.FileType==null}">
+                                <div class="customFileCard forceChatterWorkspaceTileTemplate">
+                                    <!-- FileCard for Library Folder View -->
+                                    <aura:if isTrue="{!v.isRootFolder}">
+                                        <figure  class="slds-image slds-image--card figureContainor">
+                                            <a href="" class="customA slds-image__crop " onclick="{!c.showItems}" id="{! gridItem.RootContentFolderId }" title="{! gridItem.Name}">
+                                                <span class="slds-file__icon slds-icon_container" title="image">
+                                                    <lightning:icon iconName="doctype:library_folder" alternativeText="" size="large"/>
+                                                </span>
+                                            </a>
+                                            <figcaption class="slds-truncate slds-file__title slds-file__title_card">
+                                                <div class="slds-media slds-media_small slds-media_center">
+                                                    <div class="slds-media__figure slds-line-height_reset">
+                                                        <span class="slds-icon_container" title="image">
+                                                            <lightning:icon iconName="doctype:library_folder" alternativeText="" size="x-small"/>
+                                                        </span>
+                                                    </div>
+                                                    <div class="slds-media__body">
+                                                        <span class="slds-file__text slds-truncate" title="Image Title">{! gridItem.Name}</span>
+                                                    </div>
+                                                </div>
+                                            </figcaption>
+                                        </figure>
+                                        
+                                        <!-- FileCard for Folder View -->
+                                        <aura:set attribute="else">
+                                            <figure class="slds-image slds-image--card figureContainor">
+                                                <a href="" class="customA slds-image__crop " onclick="{!c.showItems}" id="{! gridItem.Id }">
+                                                    <span class="slds-assistive-text">Preview:</span>
+                                                    <span class="slds-file__icon slds-icon_container" title="image">
+                                                        <lightning:icon iconName="doctype:folder" alternativeText="" size="large"/>
+                                                    </span>
+                                                </a>
+                                                <figcaption class="slds-truncate slds-file__title slds-file__title_card">
+                                                    <div class="slds-media slds-media_small slds-media_center">
+                                                        <div class="slds-media__figure slds-line-height_reset">
+                                                            <span class="slds-icon_container" title="image">
+                                                                <lightning:icon iconName="doctype:folder" alternativeText="" size="x-small"/>
+                                                            </span>
+                                                        </div>
+                                                        <div class="slds-media__body">
+                                                            <span class="slds-file__text slds-truncate" title="Image Title">{! gridItem.Title}</span>
+                                                        </div>
+                                                    </div>
+                                                </figcaption>
+                                            </figure>    
+                                        </aura:set>
+                                    </aura:if>
+                                </div>
+                                
+                                <!-- FileCard for File View -->
+                                <aura:set attribute="else">
+                                    <aura:if isTrue="{! gridItem.FileType == 'MP4' || gridItem.FileType == 'MOV' ||
+                                                     gridItem.FileType == 'AVI' || gridItem.FileType == 'WMV' ||
+                                                     gridItem.FileType == 'M4V' || gridItem.FileType == 'MPEG' || 
+                                                     gridItem.FileType == 'MPG'}">
+                                        <div class="customFileCard forceChatterWorkspaceTileTemplate">
+                                            <figure class="slds-image slds-image--card figureContainor">
+                                                <a href="" class="customA slds-image__crop " onclick="{!c.showVideos}" id="{! gridItem.Id }">
+                                                    <span class="slds-assistive-text">Preview:</span>
+                                                    <span class="slds-file__icon slds-icon_container" title="image">
+                                                        <lightning:icon iconName="doctype:video" alternativeText="" size="large"/>
+                                                    </span>
+                                                </a>
+                                                <figcaption class="slds-truncate slds-file__title slds-file__title_card">
+                                                    <div class="slds-media slds-media_small slds-media_center">
+                                                        <div class="slds-media__figure slds-line-height_reset">
+                                                            <span class="slds-icon_container" title="image">
+                                                                <lightning:icon iconName="doctype:video" alternativeText="" size="x-small"/>
+                                                            </span>
+                                                        </div>
+                                                        <div class="slds-media__body">
+                                                            <span class="slds-file__text slds-truncate" title="Image Title">{! gridItem.Title}</span>
+                                                        </div>
+                                                    </div>
+                                                </figcaption>
+                                            </figure>
+                                        </div>
+                                        <aura:set attribute="else">
+                                            <div class="contenFiles slds-small-order slds-medium-order slds-large-order forceChatterContentFolderItemTileTemplate" >
+                                                <lightning:fileCard fileId="{! gridItem.Id}" description="{! gridItem.Title}"/>
+                                            </div>
+                                        </aura:set>
+                                    </aura:if>
+                                </aura:set>
+                            </aura:if>
+                        </aura:iteration>
+                    </section>
+                </div>
+            </lightning:card>
+        </aura:set>
+    </aura:if>
+    <span style="display:none" id="VideoContainor">
+        <div class="slds-modal slds-fade-in-open cImageUploadComponent" style="height:540px;"  aria-labelledby="header43" role="dialog" tabindex="-1" data-aura-rendered-by="550:0" data-aura-class="cImageUploadComponent">
+            <div class="slds-modal__container" style="height:640px; width: 80% !important;max-width: 80% !important;"  data-aura-rendered-by="551:0">
+                <div class="slds-modal__header" data-aura-rendered-by="552:0">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close">
+                        <a onclick="{!c.showVideos}"><lightning:icon iconName="utility:close" alternativeText="Close this window" variant="inverse" size="small"/></a>
+                    </button>
+                    <h2 class="slds-text-heading--medium" id="header43" data-aura-rendered-by="553:0">File Upload</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around--medium" data-aura-rendered-by="555:0">
+                    <div data-aura-rendered-by="556:0">
+                        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                            <aura:if isTrue="{!v.contentDocumentId != null}">
+                                <iframe src="{!v.contentDocumentId}" width="100%" height="500px;" frameBorder="0"/>
+                                <aura:set attribute="else">
+                                    Loading...
+                                </aura:set>
+                            </aura:if> 
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div  class="slds-backdrop  slds-backdrop--open cImageUploadComponent" data-aura-rendered-by="566:0" data-aura-class="cImageUploadComponent"></div>
+    </span>
+    <!-- declare aura-html -->
+    <aura:html tag="style">
+        .figureContainor{
+        width: 100%;
+        }
+        .customFileCard{
+        width: 270px !important;
+        padding-bottom: .75rem;
+        }
+        .slds-checkbox {
+        display: none;
+        }
+        .customA{
+        padding-top: 55.5%;
+        }
+        .forceChatterObjectHomeTileView section {
+        width: 90%;
+        margin: 0 auto;
+        max-width: 1400px;
+        display: flex;
+        flex-wrap: wrap;
+        padding: .5rem 0;
+        }
+        .contenFiles .forceContentFileCard {
+        width: 270px !important;
+        }
+        .slds-table_tree [aria-level="1"]>.slds-tree__item, .slds-table--tree [aria-level="1"]>.slds-tree__item {
+        padding-left: 0; 
+        }
+        .margin{
+        margin-left:2%;
+        margin-bottom:2%;
+        }
+        .slds-carousel__indicator-action.slds-is-active, .slds-carousel__indicator-action.slds-is-active:hover {
+        background: none;
+        border-color: none;
+        }
+        .slds-carousel__indicator-action {
+        width: 0;
+        height: 0;
+        background: none;
+        border: none;
+        }
+        .slds-image__title_card, .slds-image__title--card, .slds-file__title_card, .slds-file__title--card {
+        position: unset;
+        }
+        .THIS demo {
+        height:10px !important; 
+        width:10px !important;
+        background:#000000 !important;
+        width: 150px;
+        border: 1px solid black; 
+        max-width: 100% !important;
+        position: absolute  !important; 
+        top: 0%  !important; ;
+        left: 0%  !important; 
+        -webkit-transform: translate3d(-50%, -50%, 0)  !important; 
+        -ms-transform: translate3d(-50%, -50%, 0)  !important; 
+        transform: translate3d(-50%, -50%, 0)  !important; 
+        max-width: 100%  !important; 
+        }
+        .slds-table_tree .slds-tree__item, .slds-table--tree .slds-tree__item {
+        line-height: 2.5rem;
+        }
+        .slds-large-size--card{
+        width: 32.333333% !important;
+        height: 30.333333% !important;
+        margin: .2rem !important;
+        }
+    </aura:html>
+</aura:component>

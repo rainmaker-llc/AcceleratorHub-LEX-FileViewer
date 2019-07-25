@@ -1,0 +1,25 @@
+<design:component>
+    <design:attribute name="Folder" label="Folder Name" 
+                      Description="Folder where from document list need to show"/>
+    <design:attribute label="List Label" 
+                      name="listLabel" 
+                      required="false" 
+                      placeholder="" 
+                      Description="Name for your table view."/>
+    
+    <design:attribute label="Library Name" 
+                      name="Library"
+                      required="false" 
+                      Description="Library where from we document list need to show" />
+    
+    <design:attribute label="Display As" 
+                      name="displayAs" 
+                      required="false"
+                      Description="Display As - Show the default results Table or Grid?" 
+                      datasource="Table,Grid"/>
+    <design:attribute label="File Type" 
+                      name="fileType" 
+                      required="false"
+                      Description="Please Provide Files Type seprated by Comma(,)" />
+
+</design:component>

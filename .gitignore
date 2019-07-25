@@ -1,0 +1,4 @@
+*.properties
+build.xml
+deploy/deploy.zip
+undeploy/undeploy.zip
