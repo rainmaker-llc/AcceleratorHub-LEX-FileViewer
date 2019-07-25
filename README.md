@@ -1,2 +1,2 @@
-# sirius-phase-one
-Source Version Control for Sirius Phase One
+# Lightning File Viewer
+Source Version Control for RMA
